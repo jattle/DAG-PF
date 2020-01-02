@@ -24,9 +24,9 @@ struct Utils {
   template <typename T>
   static int getRandomInt(T start, T end) {
     static_assert(std::is_integral<T>::value, "T must be integral.");
-    static std::random_device r;
-    static std::default_random_engine e1(r());
-    static std::uniform_int_distribution<T> uniform_dist(start, end);
+    std::random_device r;
+    std::default_random_engine e1(r());
+    std::uniform_int_distribution<T> uniform_dist(start, end);
     return uniform_dist(e1);
   }
 

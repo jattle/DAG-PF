@@ -1,6 +1,3 @@
-//
-// phase_common测试用例
-//
 #include "yapf/base/phase_common.h"
 
 #include <chrono>

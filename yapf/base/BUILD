@@ -187,3 +187,23 @@ cc_test(
         "@googletest//:gtest_main"
         ],
 )
+
+cc_test(
+    name = "utils_test",
+    srcs = ["utils_test.cc"],
+    deps = [
+        ":utils",
+        ":logging",
+        "@googletest//:gtest_main"
+        ],
+)
+
+cc_test(
+    name = "timeout_queue_test",
+    srcs = ["timeout_queue_test.cc"],
+    deps = [
+        ":timeout_queue",
+        ":logging",
+        "@googletest//:gtest_main"
+        ],
+)

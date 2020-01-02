@@ -31,12 +31,13 @@ class TimerThread {
   TimerThread& operator=(const TimerThread&) = delete;
 
  public:
-  TimerThread() { sem_init(&sem_, 0, 0); }
+  TimerThread() = default;
+
   ~TimerThread() {
     stop();
     if (m_thread.joinable()) m_thread.join();
-    sem_destroy(&sem_);
   }
+
   void start() {
     bool tmp = m_startFlag.load();
     if (tmp) return;
@@ -69,21 +70,19 @@ class TimerThread {
     return m_timedQueue.erase(id);
   }
 
- private:
-  void notify() {
-    int val = 0;
-    sem_getvalue(&sem_, &val);
-    if (val < 1) {
-      sem_post(&sem_);
-    }
+  size_t size() {
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_timedQueue.size();
   }
 
+ private:
+  void notify() { m_cond.notify_one(); }
+
   void wait(uint64_t timeout_ms) {
-    struct timespec ts;
-    uint64_t abstime_ms = yapf::Utils::getNowMs() + timeout_ms;
-    ts.tv_sec = abstime_ms / 1000;
-    ts.tv_nsec = (abstime_ms % 1000) * 1000 * 1000;
-    sem_timedwait(&sem_, &ts);
+    if (timeout_ms > 0) {
+      std::unique_lock<std::mutex> locker(m_condMutex);
+      m_cond.wait_for(locker, std::chrono::milliseconds(timeout_ms));
+    }
   }
 
   int run() {
@@ -113,9 +112,8 @@ class TimerThread {
   std::thread m_thread;
   std::atomic<bool> m_startFlag{false};
   std::mutex m_mutex;  // data access mutex
-  // std::condition_variable m_cond;
-  // std::mutex m_condMutex;
-  sem_t sem_;
+  std::condition_variable m_cond;
+  std::mutex m_condMutex;
   std::atomic<bool> m_stopFlag{false};
   TimeoutQueue<TimerCBType> m_timedQueue;
 };
