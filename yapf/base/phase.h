@@ -25,7 +25,9 @@ class Phase {
   virtual void Initialize() {}
   void SetName(const std::string &name) { phase_name_ = name; }
   const std::string &GetName() const { return phase_name_; }
-  int GetRedoRetryTimes() { return redo_retry_times_.load(); }
+  int GetRedoRetryTimes() {
+    return redo_retry_times_.load(std::memory_order_relaxed);
+  }
   FutureWrapper<int> Run(PhaseContextPtr context_ptr,
                          const PhaseParamDetail &detail) {
     RedoReset();
@@ -49,7 +51,7 @@ class Phase {
   int NotifySkip() { return NotifyDone(kPhaseProcessingRetSkip); }
   // 通知重做本逻辑
   int NotifyRedo() {
-    ++redo_retry_times_;
+    redo_retry_times_.fetch_add(1, std::memory_order_relaxed);
     return NotifyDone(kPhaseProcessingRetRedo);
   }
   // TODO (jattlelin) notify execption

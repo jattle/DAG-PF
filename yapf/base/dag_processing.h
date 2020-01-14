@@ -91,7 +91,7 @@ class DAG {
   //弹出parent出节点中当前依赖已满足的节点
   int Pop(DAGNodePtr parent, std::vector<DAGNodePtr> &top_nodes);
   //对依赖关系预处理并判断有效性
-  int Init(bool (*valid_functor)(const std::string &));
+  int Init(std::function<bool(const std::string &)>&);
   //输出拓扑排序结果
   void List();
   //获取节点的依赖节点集合
@@ -110,7 +110,7 @@ class DAG {
  private:
   DAGNodePtr AllocNode(const std::string &);
   //检验DAG图有效性
-  int CheckValidity(bool (*valid_functor)(const std::string &));
+  int CheckValidity(std::function<bool(const std::string &)>&);
   int Adjust();
   int Traverse();
   int AddLink(const std::string &pre_node_name,

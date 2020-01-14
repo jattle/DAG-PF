@@ -96,6 +96,9 @@ class PhaseScheduler {
       const std::unordered_map<std::string, std::string> &node_alias_name_map);
   int CopyFrom(const PhaseScheduler &source);
   int Start(PhaseContextPtr context_ptr);
+  void SetPhaseNameSpace(const std::string &ns) {
+    this->phase_namespace_name_ = ns;
+  }
   void Clear();
 
   // 全局初始化
@@ -147,6 +150,7 @@ class PhaseScheduler {
   std::vector<PhaseParamDetail> phase_param_pool_;  // Phase静态参数池(可共享)
   std::vector<PhaseParamDetail> *phase_param_pool_ptr_{
       nullptr};                                // 共享指针，避免复制
+  std::string phase_namespace_name_;
   inline static bool s_enable_statis_{false};  // 是否打印统计数据日志(全局开关)
   inline static bool s_verbose_{false};  // 是否输出详细信息
   inline static bool s_enable_thread_pool_{
@@ -171,7 +175,7 @@ int StartScheduler(const PhaseScheduler &reused_scheduler,
                    PhaseContextPtr context_ptr);
 
 // 预分配并初始化一个scheduler，后续可以重用减少开销
-int InitSchedulers(
+int InitScheduler(
     const std::vector<std::string> &exprs,
     const std::unordered_map<std::string, std::string> &phase_class_map,
     PhaseScheduler &reused_scheduler);

@@ -115,7 +115,7 @@ int DAG::InnerPop(DAGNodePtr parent, std::vector<DAGNodePtr> &top_nodes) {
   return 0;
 }
 
-int DAG::CheckValidity(bool (*valid_functor)(const std::string &)) {
+int DAG::CheckValidity(std::function<bool(const std::string &)> &valid_functor) {
   bool has_alias = !node_alias_name_map_.empty();
   for (auto &node : node_pool_) {
     if (has_alias) {
@@ -226,7 +226,7 @@ int DAG::DFS(DAGNodePtr node) {
   return 0;
 }
 
-int DAG::Init(bool (*valid_functor)(const std::string &)) {
+int DAG::Init(std::function<bool(const std::string &)> &valid_functor) {
   int ret = Adjust();
   if (ret != 0) {
     DAGPF_LOG_ERROR << "adjust failed." << std::endl;

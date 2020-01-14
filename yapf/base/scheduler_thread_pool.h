@@ -62,8 +62,8 @@ using JobClosure = std::function<void(void)>;
 
 class SchedulerThreadPool {
  public:
-  SchedulerThreadPool() { sem_init(&sem_, 0, 0); }
-  ~SchedulerThreadPool() { sem_destroy(&sem_); }
+  SchedulerThreadPool() = default;
+  ~SchedulerThreadPool() = default; 
   int Init(const SchedulerThreadPoolOption &option);
   int Submit(JobClosure &&t);
   bool Get(JobClosure &t, size_t);
@@ -73,39 +73,21 @@ class SchedulerThreadPool {
 
  private:
   void Notify() {
-    // using sem
-    // sem_post(&sem_);
-    // int val = 0;
-    // sem_getvalue(&sem_, &val);
-    // if (val < 1) {
-    //   sem_post(&sem_);
-    // }
     // using condition variable
     cond_.notify_one();
-    // cond_.notify_all();
   }
 
   void Wait(uint64_t timeout_ms) {
     if (timeout_ms == 0) return;
-    // struct timespec ts;
-    // uint64_t abstime_ms = yapf::Utils::getNowMs() + timeout_ms;
-    // ts.tv_sec = abstime_ms / 1000;
-    // ts.tv_nsec = (abstime_ms % 1000) * 1000 * 1000;
-    // sem_timedwait(&sem_, &ts);
-
-    // DAGPF_LOG_INFO << "wait " << timeout_ms << std::endl;
     std::unique_lock<std::mutex> locker(cond_mutex_);
     cond_.wait_for(locker, std::chrono::milliseconds(timeout_ms));
   }
 
  private:
   std::atomic<bool> has_inited_{false};
-  sem_t sem_;
   std::condition_variable cond_;
   std::mutex cond_mutex_;
   std::vector<std::unique_ptr<SchedulerThreadBase>> job_threads_;
-  // LockFreeQueue<JobClosure *> job_queue_;
-  // ArrayLockFreeQueue<JobClosure *, 65536> job_queue_;
   Utils::SimpleBlockingQueue<JobClosure> job_queue_;
 };
 

@@ -89,6 +89,7 @@ cc_library(
     deps = [
             ":scheduler_thread_pool",
             ],
+    alwayslink = 1,
     visibility = [ 
         "//visibility:public",
     ],  
@@ -206,4 +207,16 @@ cc_test(
         ":logging",
         "@googletest//:gtest_main"
         ],
+)
+
+cc_test(
+    name = "phase_scheduler_test",
+    srcs = ["phase_scheduler_test.cc"],
+    deps = [
+        ":phase_scheduler",
+        ":scheduler_thread",
+        ":logging",
+        "@googletest//:gtest_main"
+        ],
+    copts = ["-D__PHASE_NAMESPACE=\"yapf\""]
 )

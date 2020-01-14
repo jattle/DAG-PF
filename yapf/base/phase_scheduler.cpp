@@ -10,10 +10,6 @@
 #include "logging.h"
 #include "yapf/flow_control/FlowControlFactory.h"
 
-#ifndef __PHASE_NAMESPACE
-#define __PHASE_NAMESPACE ""
-#endif
-
 namespace yapf {
 
 PhaseContext::~PhaseContext() {
@@ -21,10 +17,12 @@ PhaseContext::~PhaseContext() {
   delete scheduler_ptr;
 }
 
-static bool HasRegistered(const std::string &full_name) {
+static bool HasRegistered(const std::string &phase_namespace,
+                          const std::string &full_name) {
   std::string class_name = full_name.substr(0, full_name.find("("));
-  DAGPF_LOG_INFO << "class_name: " << class_name << std::endl;
-  return HasRegisted<yapf::Phase>(__PHASE_NAMESPACE, class_name);
+  DAGPF_LOG_INFO << "pahse_namespace: " << phase_namespace
+                 << ", class_name: " << class_name << std::endl;
+  return HasRegisted<yapf::Phase>(phase_namespace, class_name);
 }
 
 int PhaseScheduler::Start(
@@ -86,6 +84,7 @@ int PhaseScheduler::CopyFrom(const PhaseScheduler &source) {
   this->phase_ret_array_ = source.phase_ret_array_;
   this->topology_array_ = source.topology_array_;
   this->phase_timecost_array_ = source.phase_timecost_array_;
+  this->phase_namespace_name_ = source.phase_namespace_name_;
   return 0;
 }
 
@@ -98,7 +97,9 @@ int PhaseScheduler::BuildDAG(
     DAGPF_LOG_ERROR << "add node links failed: ret = " << ret << std::endl;
     return kPhaseSchedulerRetInvalidDAG;
   }
-  ret = dag_.Init(&HasRegistered);
+  std::function<bool(const std::string &)> validate_functor = std::bind(
+      &yapf::HasRegistered, this->phase_namespace_name_, std::placeholders::_1);
+  ret = dag_.Init(validate_functor);
   if (ret != 0) {
     DAGPF_LOG_ERROR << "init DAG failed: ret = " << ret << std::endl;
     return kPhaseSchedulerRetInvalidDAG;
@@ -140,9 +141,10 @@ int PhaseScheduler::PreAllocatePhase(DAGNodePtr node) {
   const std::string &name =
       (*phase_param_pool_ptr_)[node->GetId()].config_key.name;
   std::shared_ptr<Phase> phase_ptr(
-      CreateObject<Phase>(__PHASE_NAMESPACE, name));
+      CreateObject<Phase>(this->phase_namespace_name_, name));
   if (not phase_ptr) {
     DAGPF_LOG_ERROR << "cant create phase instance: " << name
+                    << ", namespace name:" << this->phase_namespace_name_
                     << ", full name: " << node->GetFullName() << std::endl;
     return kPhaseSchedulerRetCreatePhaseFailed;
   }
@@ -206,11 +208,12 @@ int PhaseScheduler::Schedule(const std::vector<DAGNodePtr> &nodes,
       // record start time
       phase_timecost_array_[node->GetId()] = Utils::getNowMs();
     }
-    if (is_sig_interrupted_.load(std::memory_order_relaxed) && node != dag_.GetEndNode()) {
+    if (is_sig_interrupted_.load(std::memory_order_relaxed) &&
+        node != dag_.GetEndNode()) {
       // skip running phase other than EndPhase if scheduler has been
       // interrupted
       FutureWrapper<int> ret;
-      //PromiseWrapper<int> promise_ret;
+      // PromiseWrapper<int> promise_ret;
       PromiseWrapper<int> promise_ret{true};
       promise_ret.SetValue(kPhaseProcessingRetSkip);
       ret = promise_ret.GetFuture();
@@ -397,7 +400,8 @@ int PhaseScheduler::UpdateStatis(DAGNodePtr node,
   if (!s_enable_statis_) return 0;
   // record scheduler path
   // topology_array_[schedule_cursor_++] = node;
-  topology_array_[schedule_cursor_.fetch_add(1, std::memory_order_relaxed)] = node;
+  topology_array_[schedule_cursor_.fetch_add(1, std::memory_order_relaxed)] =
+      node;
   // calculate timecost
   phase_timecost_array_[node->GetId()] =
       Utils::getNowMs() - phase_timecost_array_[node->GetId()];
@@ -472,7 +476,8 @@ int PhaseScheduler::ScheduleCB(PhaseContextPtr ctx_ptr, DAGNodePtr node,
   }
   // last phase
   if (node == dag_.GetEndNode()) {
-    ctx_ptr->is_interrupted = is_sig_interrupted_.load(std::memory_order_relaxed);
+    ctx_ptr->is_interrupted =
+        is_sig_interrupted_.load(std::memory_order_relaxed);
     ctx_ptr->ir_reason = ir_reason_.load(std::memory_order_relaxed);
     ReportStatis(ctx_ptr);
     return 0;
@@ -597,7 +602,7 @@ int StartScheduler(const PhaseScheduler &reused_scheduler,
   return context_ptr->scheduler_ptr->Start(context_ptr);
 }
 
-int InitSchedulers(
+int InitScheduler(
     const std::vector<std::string> &exprs,
     const std::unordered_map<std::string, std::string> &phase_class_map,
     PhaseScheduler &reused_scheduler) {
