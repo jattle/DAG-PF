@@ -1,28 +1,34 @@
-## 简介
+## YAPF
 
-yapf是一种程序逻辑流程控制框架，其思路是使用DAG描述程序业务逻辑中的本来关系，
-通过拓扑排序调度业务逻辑的并发执行，解决promise/future、协程等流程控制原语
-在实现逻辑的串行并行组合上实现比较繁琐或可读性差的问题。
+YAPF(Yet Another Procedure Framework) is a program precedure control framework, 
+its design principle is using DAG to describe relationship between progam logic components.
+Once DAG is built, during topology sorting on DAG, each logic component(Phase) is scheduled to execute 
+just at the right time, you dont bother to schedule Phase A after Phase B by hard coding.
+Of course, you must have to write scheduling code(serial and parallel combination) yourself
+when using procedure control primitives such as promises / futures and coroutines, 
+which often leads to poor readability.
     
-使用者通过配置文件声明各流程定义以及流程间关系，编写各独立流程实现代码，
-不需要关心流程的执行顺序，由框架统一调度。
+Users only have to declare definition and relationship between each phase, then writing separate
+implementation of each phase, execution order of each phase will be scheduled by this framework. 
     
-框架支持多种流程调度线程，默认使用std::thread，使用者可以提供自己的调度线程，
-比如将RPC框架的协程能力封装为一种调度线程，目前提供了taf_co_thread调度线程，
-其底层使用了TAF/TARS协程来执行流程，必须运行在TAF/TARS框架上。
+Execution of phase is handled by procedure schedule thread, it provides several type, 
+std::thread by default, and coroutine also cant be wrapped as a kind of scheduler thread, 
+users can implement new subclass by inheriting class `SchedulerThreadBase`.
+an example. 
 
-本流程框架是RPC框架无关的，其基础能力不依赖任何框架实现，适用于任何程序的内部流程组织。
+This procedure framework is independent of any RPC framework, and is applicable to the internal 
+process organization of any program.
 
-注意：框架依赖C++17以上语言标准。
+Note: C++ 17 required.
 
-## 目录说明
+## Description 
 
 - yapf/base 
   
-源码实现。包括DAG表示、流程调度器、流控等。
+base source code, includes Processing of DAG、Phase Scheduler、Timer Logic etc.
 
 - yapf/flow_control
-框架用到的流控实现以及一些工具类。
+implementation of sliding window flow control and utils.
 
 - TODO
-提供一些常规的例子。
+provide more examples。
