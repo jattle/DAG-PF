@@ -97,9 +97,9 @@ int PhaseScheduler::BuildDAG(
     DAGPF_LOG_ERROR << "add node links failed: ret = " << ret << std::endl;
     return kPhaseSchedulerRetInvalidDAG;
   }
-  std::function<bool(const std::string &)> validate_functor = std::bind(
-      &yapf::HasRegistered, this->phase_namespace_name_, std::placeholders::_1);
-  ret = dag_.Init(validate_functor);
+  ret = dag_.Init([this] (const auto &name) -> bool {
+      return yapf::HasRegistered(this->phase_namespace_name_, name);
+      });
   if (ret != 0) {
     DAGPF_LOG_ERROR << "init DAG failed: ret = " << ret << std::endl;
     return kPhaseSchedulerRetInvalidDAG;

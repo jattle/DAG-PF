@@ -115,30 +115,6 @@ int DAG::InnerPop(DAGNodePtr parent, std::vector<DAGNodePtr> &top_nodes) {
   return 0;
 }
 
-int DAG::CheckValidity(std::function<bool(const std::string &)> &valid_functor) {
-  bool has_alias = !node_alias_name_map_.empty();
-  for (auto &node : node_pool_) {
-    if (has_alias) {
-      auto alias_iter = node_alias_name_map_.find(node->name_);
-      if (alias_iter == node_alias_name_map_.end()) {
-        DAGPF_LOG_ERROR << "cant find full name for alias: " << node->name_
-                        << std::endl;
-        return kDagOpRetInvalidName;
-      }
-      node->full_name_ = alias_iter->second;
-    } else {
-      node->full_name_ = node->name_;
-    }
-    // check if can create instance
-    if (!valid_functor(node->full_name_)) {
-      DAGPF_LOG_ERROR << "not registered, alias: " << node->name_
-                      << ", full name: " << node->full_name_ << std::endl;
-      return kDagOpRetInvalidName;
-    }
-  }
-  return 0;
-}
-
 int DAG::Adjust() {
   if (node_pool_.empty()) {
     DAGPF_LOG_ERROR << "empty nodes." << std::endl;
@@ -226,26 +202,6 @@ int DAG::DFS(DAGNodePtr node) {
   return 0;
 }
 
-int DAG::Init(std::function<bool(const std::string &)> &valid_functor) {
-  int ret = Adjust();
-  if (ret != 0) {
-    DAGPF_LOG_ERROR << "adjust failed." << std::endl;
-    return ret;
-  }
-  // check validity
-  ret = CheckValidity(valid_functor);
-  if (ret != 0) {
-    DAGPF_LOG_ERROR << "check validity failed: ret = " << ret << std::endl;
-    return ret;
-  }
-  ret = Traverse();
-  if (ret != 0) {
-    DAGPF_LOG_ERROR << "traverse failed, maybe has circle. ret = " << ret
-                    << std::endl;
-    return ret;
-  }
-  return 0;
-}
 
 // display topology sort result
 void DAG::List() {

@@ -10,6 +10,7 @@
 #include <atomic>
 #include <bitset>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
@@ -17,6 +18,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "yapf/base/logging.h"
 
 namespace yapf {
 
@@ -91,8 +94,27 @@ class DAG {
   //弹出parent出节点中当前依赖已满足的节点
   int Pop(DAGNodePtr parent, std::vector<DAGNodePtr> &top_nodes);
   //对依赖关系预处理并判断有效性
-  int Init(std::function<bool(const std::string &)>&);
   //输出拓扑排序结果
+  int Init(auto &&valid_functor) {
+    int ret = Adjust();
+    if (ret != 0) {
+      DAGPF_LOG_ERROR << "adjust failed." << std::endl;
+      return ret;
+    }
+    // check validity
+    ret = CheckValidity(valid_functor);
+    if (ret != 0) {
+      DAGPF_LOG_ERROR << "check validity failed: ret = " << ret << std::endl;
+      return ret;
+    }
+    ret = Traverse();
+    if (ret != 0) {
+      DAGPF_LOG_ERROR << "traverse failed, maybe has circle. ret = " << ret
+                      << std::endl;
+      return ret;
+    }
+    return 0;
+  }
   void List();
   //获取节点的依赖节点集合
   int GetDepNodes(DAGNodePtr node, std::vector<DAGNodePtr> &parents);
@@ -110,7 +132,29 @@ class DAG {
  private:
   DAGNodePtr AllocNode(const std::string &);
   //检验DAG图有效性
-  int CheckValidity(std::function<bool(const std::string &)>&);
+  int CheckValidity(auto &&valid_functor) {
+    bool has_alias = !node_alias_name_map_.empty();
+    for (auto &node : node_pool_) {
+      if (has_alias) {
+        auto alias_iter = node_alias_name_map_.find(node->name_);
+        if (alias_iter == node_alias_name_map_.end()) {
+          DAGPF_LOG_ERROR << "cant find full name for alias: " << node->name_
+                          << std::endl;
+          return kDagOpRetInvalidName;
+        }
+        node->full_name_ = alias_iter->second;
+      } else {
+        node->full_name_ = node->name_;
+      }
+      // check if can create instance
+      if (!valid_functor(node->full_name_)) {
+        DAGPF_LOG_ERROR << "not registered, alias: " << node->name_
+                        << ", full name: " << node->full_name_ << std::endl;
+        return kDagOpRetInvalidName;
+      }
+    }
+    return 0;
+  }
   int Adjust();
   int Traverse();
   int AddLink(const std::string &pre_node_name,

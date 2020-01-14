@@ -15,6 +15,7 @@ cc_library(
     srcs = ["dag_processing.cpp"],
     hdrs = ["dag_processing.h"],
     deps = [":logging"],
+    copts = ["-fconcepts"],
     visibility = [ 
         "//visibility:public",
     ],  
@@ -217,6 +218,5 @@ cc_test(
         ":scheduler_thread",
         ":logging",
         "@googletest//:gtest_main"
-        ],
-    copts = ["-D__PHASE_NAMESPACE=\"yapf\""]
+        ]
 )

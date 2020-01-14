@@ -12,7 +12,7 @@ namespace yapf {
 
 TEST(DAGProcessingTest, EmptyDAG) {
   DAG dag;
-  auto ret = dag.Init([](const auto &t) { return true; });
+  auto ret = dag.Init([](const auto &t) -> bool { return true; });
   EXPECT_EQ(ret, kDagOpRetEmptyNodes);
 }
 
@@ -24,7 +24,7 @@ TEST(DAGProcessingTest, NotConnectedDAG) {
   EXPECT_EQ(0, ParseExprs(exprs, pairs, single_nodes));
   std::unordered_map<std::string, std::string> alias_map;
   EXPECT_EQ(0, dag.AddNodeLinks(pairs, single_nodes, alias_map));
-  auto ret = dag.Init([](const auto &t) { return true; });
+  auto ret = dag.Init([](const auto &t) -> bool { return true; });
   EXPECT_EQ(ret, kDagOpRetNotConnected);
 }
 
@@ -36,7 +36,7 @@ TEST(DAGProcessingTest, CircleDAG) {
   EXPECT_EQ(0, ParseExprs(exprs, pairs, single_nodes));
   std::unordered_map<std::string, std::string> alias_map;
   EXPECT_EQ(0, dag.AddNodeLinks(pairs, single_nodes, alias_map));
-  auto ret = dag.Init([](const auto &t) { return true; });
+  auto ret = dag.Init([](const auto &t) -> bool { return true; });
   EXPECT_EQ(ret, kDagOpRetHasCircle);
 }
 
@@ -48,7 +48,7 @@ TEST(DAGProcessingTest, NormalDAG) {
   EXPECT_EQ(0, ParseExprs(exprs, pairs, single_nodes));
   std::unordered_map<std::string, std::string> alias_map;
   EXPECT_EQ(0, dag.AddNodeLinks(pairs, single_nodes, alias_map));
-  auto ret = dag.Init([](const auto &t) { return true; });
+  auto ret = dag.Init([](const auto &t) -> bool { return true; });
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(dag.Size(), 7u);
   EXPECT_STREQ(dag.GetStartNode()->GetFullName().c_str(), "StartPhase");
