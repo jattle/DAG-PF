@@ -9,6 +9,7 @@
 #include <chrono>
 #include <future>
 #include <iostream>
+#include <mutex>
 #include <thread>
 
 #include "gtest/gtest.h"
@@ -23,7 +24,9 @@ struct TestContext : public yapf::PhaseContext {
         .append(std::to_string(ret));
     return log_buffer;
   }
+  // may have contention
   std::vector<std::string> executed_phases;
+  std::mutex local_mutex;
   std::string redo_phase;
   int ret{-1};
   std::promise<int> promise_val;
@@ -37,7 +40,10 @@ class StartPhase : public yapf::Phase {
   int DoProcess(yapf::PhaseContextPtr context_ptr,
                 const yapf::PhaseParamDetail &detail) override {
     auto biz_ctx = ToBizCtxPtr<TestContext>(context_ptr);
-    biz_ctx->executed_phases.emplace_back(this->GetName());
+    {
+      std::unique_lock<std::mutex> locker(biz_ctx->local_mutex);
+      biz_ctx->executed_phases.emplace_back(this->GetName());
+    }
     return NotifyDone(0);
   }
 };
@@ -52,7 +58,10 @@ class EndPhase : public yapf::Phase {
   int DoProcess(yapf::PhaseContextPtr context_ptr,
                 const yapf::PhaseParamDetail &detail) override {
     auto biz_ctx = ToBizCtxPtr<TestContext>(context_ptr);
-    biz_ctx->executed_phases.emplace_back(this->GetName());
+    {
+      std::unique_lock<std::mutex> locker(biz_ctx->local_mutex);
+      biz_ctx->executed_phases.emplace_back(this->GetName());
+    }
     biz_ctx->ret = 0;
     biz_ctx->promise_val.set_value(0);
     return NotifyDone(0);
@@ -69,7 +78,10 @@ class APhase : public yapf::Phase {
   int DoProcess(yapf::PhaseContextPtr context_ptr,
                 const yapf::PhaseParamDetail &detail) override {
     auto biz_ctx = ToBizCtxPtr<TestContext>(context_ptr);
-    biz_ctx->executed_phases.emplace_back(this->GetName());
+    {
+      std::unique_lock<std::mutex> locker(biz_ctx->local_mutex);
+      biz_ctx->executed_phases.emplace_back(this->GetName());
+    }
     return NotifyDone(0);
   }
 };
@@ -84,7 +96,10 @@ class BPhase : public yapf::Phase {
   int DoProcess(yapf::PhaseContextPtr context_ptr,
                 const yapf::PhaseParamDetail &detail) override {
     auto biz_ctx = ToBizCtxPtr<TestContext>(context_ptr);
-    biz_ctx->executed_phases.emplace_back(this->GetName());
+    {
+      std::unique_lock<std::mutex> locker(biz_ctx->local_mutex);
+      biz_ctx->executed_phases.emplace_back(this->GetName());
+    }
     return NotifyDone(0);
   }
 };
@@ -99,7 +114,10 @@ class CPhase : public yapf::Phase {
   int DoProcess(yapf::PhaseContextPtr context_ptr,
                 const yapf::PhaseParamDetail &detail) override {
     auto biz_ctx = ToBizCtxPtr<TestContext>(context_ptr);
-    biz_ctx->executed_phases.emplace_back(this->GetName());
+    {
+      std::unique_lock<std::mutex> locker(biz_ctx->local_mutex);
+      biz_ctx->executed_phases.emplace_back(this->GetName());
+    }
     return NotifyDone(0);
   }
 };
@@ -114,7 +132,10 @@ class DPhase : public yapf::Phase {
   int DoProcess(yapf::PhaseContextPtr context_ptr,
                 const yapf::PhaseParamDetail &detail) override {
     auto biz_ctx = ToBizCtxPtr<TestContext>(context_ptr);
-    biz_ctx->executed_phases.emplace_back(this->GetName());
+    {
+      std::unique_lock<std::mutex> locker(biz_ctx->local_mutex);
+      biz_ctx->executed_phases.emplace_back(this->GetName());
+    }
     return NotifySkip();
   }
 };
@@ -133,7 +154,10 @@ class EPhase : public yapf::Phase {
       biz_ctx->redo_phase = this->GetName();
     }
     if (!redo_flag_) {
-      biz_ctx->executed_phases.emplace_back(this->GetName());
+      {
+        std::unique_lock<std::mutex> locker(biz_ctx->local_mutex);
+        biz_ctx->executed_phases.emplace_back(this->GetName());
+      }
       redo_flag_ = true;
       return NotifyRedo();
     }
@@ -149,11 +173,11 @@ REGISTER_CLASS(yapf, Phase, yapf, EPhase);
 class PhaseSchedulerTest : public ::testing::Test {
  public:
   void SetUp() override {
-    // global init 
+    // global init
     SchedulerOption scheduler_option;
     scheduler_option.enable_statis = true;
     scheduler_option.enable_thread_pool = true;
-    scheduler_option.pool_option.scheduler_name = "default"; 
+    scheduler_option.pool_option.scheduler_name = "default";
     scheduler_option.pool_option.thread_num = 2;
     scheduler_option.pool_option.max_queue_size = 100;
     PhaseScheduler::GlobalInit(scheduler_option);
