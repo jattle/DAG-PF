@@ -1,6 +1,6 @@
-## YAPF
+## DAG-PF
 
-YAPF(Yet Another Procedure Framework) is a program precedure control framework, 
+DAGPF is a program procedure control framework, 
 its design principle is using DAG to describe relationship between progam logic components.
 Once DAG is built, during topology sorting on DAG, each logic component(Phase) is scheduled to execute 
 just at the right time, you dont bother to schedule Phase A after Phase B by hard coding.
